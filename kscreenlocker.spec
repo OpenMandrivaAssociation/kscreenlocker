@@ -31,7 +31,7 @@ Conflicts:      plasma-workspace < 5.5.0
 %description
 Library and components for secure lock screen architecture.
 
-%files -f kscreenlocker.lang, kscreenlocker_greet.lang, screenlocker_kcm.lang
+%files -f kscreenlocker.lang,kscreenlocker_greet.lang,screenlocker_kcm.lang
 %{_libdir}/qt5/plugins/screenlocker_kcm.so
 %attr(4755,root,root) %{_libexecdir}/kcheckpass
 %{_libexecdir}/kscreenlocker_greet
