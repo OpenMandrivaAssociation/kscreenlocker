@@ -33,8 +33,8 @@ Library and components for secure lock screen architecture.
 
 %files -f kscreenlocker.lang,kscreenlocker_greet.lang,screenlocker_kcm.lang
 %{_libdir}/qt5/plugins/screenlocker_kcm.so
-%attr(4755,root,root) %{_libexecdir}/kcheckpass
-%{_libexecdir}/kscreenlocker_greet
+%attr(4755,root,root) %{_libdir}/libexec/kcheckpass
+%{_libdir}/libexec/kscreenlocker_greet
 %{_datadir}/dbus-1/interfaces/kf5_org.freedesktop.ScreenSaver.xml
 %{_datadir}/kconf_update/kscreenlocker.upd
 %{_datadir}/kconf_update/ksreenlocker_5_3_separate_autologin.pl
