@@ -67,7 +67,7 @@ Library and components for secure lock screen architecture.
 %package -n %{kscreenlocker_devel}
 Summary:        Devel stuff for %{name}
 Group:          Development/KDE and Qt
-Requires:       %{name} = %{version}-%{EVRD}
+Requires:       %{name} = %{EVRD}
 Requires:       %{libkscreenlocker} = %{EVRD}
 Requires:       pkgconfig(Qt5DBus)
 Provides:       %{name}-devel = %{EVRD}
