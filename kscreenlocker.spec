@@ -24,6 +24,7 @@ BuildRequires:	cmake(KF5IdleTime)
 BuildRequires:	cmake(KF5KDELibs4Support)
 BuildRequires:	cmake(KF5Crash)
 BuildRequires:	cmake(KF5GlobalAccel)
+BuildRequires:	pam-devel
 Conflicts:      plasma-workspace < 5.5.0
 
 %description
