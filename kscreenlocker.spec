@@ -1,12 +1,14 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	5.5.3
-Release:	3
+Release:	4
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		http://kde.org/
 Source0:	http://download.kde.org//%{stable}/plasma/%{plasmaver}/%{name}-%{version}.tar.xz
 Patch0:		kscreenlocker-5.5.3-use-fallback-wallpaper-from-omv.patch
+# (tpg) https://issues.openmandriva.org/show_bug.cgi?id=1319
+Patch1:		kscreenlocker-5.5.3-add-missing-library.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	pkgconfig(Qt5Widgets)
 BuildRequires:	pkgconfig(Qt5Quick)
