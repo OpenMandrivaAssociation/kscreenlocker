@@ -1,6 +1,6 @@
 diff -Naur kscreenlocker-5.5.3/CMakeLists.txt kscreenlocker-5.5.3.tpg/CMakeLists.txt
 --- kscreenlocker-5.5.3/CMakeLists.txt	2016-01-06 12:06:24.000000000 +0000
-+++ kscreenlocker-5.5.3.tpg/CMakeLists.txt	2016-01-23 00:28:34.670927594 +0000
++++ kscreenlocker-5.5.3.tpg/CMakeLists.txt	2016-01-23 00:52:05.845740645 +0000
 @@ -19,7 +19,7 @@
  include(ECMPackageConfigHelpers)
  
@@ -12,7 +12,7 @@ diff -Naur kscreenlocker-5.5.3/CMakeLists.txt kscreenlocker-5.5.3.tpg/CMakeLists
  set_package_properties(X11 PROPERTIES DESCRIPTION "X11 libraries"
 diff -Naur kscreenlocker-5.5.3/greeter/CMakeLists.txt kscreenlocker-5.5.3.tpg/greeter/CMakeLists.txt
 --- kscreenlocker-5.5.3/greeter/CMakeLists.txt	2016-01-06 12:05:43.000000000 +0000
-+++ kscreenlocker-5.5.3.tpg/greeter/CMakeLists.txt	2016-01-23 00:29:13.171958661 +0000
++++ kscreenlocker-5.5.3.tpg/greeter/CMakeLists.txt	2016-01-23 00:55:37.902423827 +0000
 @@ -31,6 +31,7 @@
                          KF5::I18n
                          KF5::ConfigGui
