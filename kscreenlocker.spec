@@ -1,6 +1,6 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
-Version:	5.5.4
+Version:	5.5.5
 Release:	1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
