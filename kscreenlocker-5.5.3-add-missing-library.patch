@@ -1,23 +1,22 @@
-diff -Naur kscreenlocker-5.5.3/CMakeLists.txt kscreenlocker-5.5.3.tpg/CMakeLists.txt
---- kscreenlocker-5.5.3/CMakeLists.txt	2016-01-06 12:06:24.000000000 +0000
-+++ kscreenlocker-5.5.3.tpg/CMakeLists.txt	2016-01-23 00:52:05.845740645 +0000
-@@ -19,7 +19,7 @@
- include(ECMPackageConfigHelpers)
- 
- find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
--                    Plasma KCMUtils Declarative IdleTime KDELibs4Support Crash GlobalAccel)
-+                    Plasma PlasmaQuick KCMUtils Declarative IdleTime KDELibs4Support Crash GlobalAccel)
+diff -Naur kscreenlocker-5.6.0/CMakeLists.txt kscreenlocker-5.6.0.tpg/CMakeLists.txt
+--- kscreenlocker-5.6.0/CMakeLists.txt	2016-03-17 10:50:44.000000000 +0000
++++ kscreenlocker-5.6.0.tpg/CMakeLists.txt	2016-03-23 19:23:52.459108158 +0000
+@@ -37,6 +37,7 @@
+                     Solid
+                     WindowSystem
+                     XmlGui
++                    PlasmaQuick
+                     )
  
  find_package(X11)
- set_package_properties(X11 PROPERTIES DESCRIPTION "X11 libraries"
-diff -Naur kscreenlocker-5.5.3/greeter/CMakeLists.txt kscreenlocker-5.5.3.tpg/greeter/CMakeLists.txt
---- kscreenlocker-5.5.3/greeter/CMakeLists.txt	2016-01-06 12:05:43.000000000 +0000
-+++ kscreenlocker-5.5.3.tpg/greeter/CMakeLists.txt	2016-01-23 00:55:37.902423827 +0000
-@@ -31,6 +31,7 @@
+diff -Naur kscreenlocker-5.6.0/greeter/CMakeLists.txt kscreenlocker-5.6.0.tpg/greeter/CMakeLists.txt
+--- kscreenlocker-5.6.0/greeter/CMakeLists.txt	2016-03-17 10:49:59.000000000 +0000
++++ kscreenlocker-5.6.0.tpg/greeter/CMakeLists.txt	2016-03-23 19:24:19.799846267 +0000
+@@ -30,6 +30,7 @@
                          KF5::I18n
                          KF5::ConfigGui
                          KF5::Declarative
 +                        KF5::PlasmaQuick
                          KF5::QuickAddons
+                         KF5::WindowSystem
                          Qt5::Quick
-                         Qt5::Qml
