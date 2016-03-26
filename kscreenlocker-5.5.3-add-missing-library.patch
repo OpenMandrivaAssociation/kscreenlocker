@@ -1,17 +1,18 @@
 diff -Naur kscreenlocker-5.6.0/CMakeLists.txt kscreenlocker-5.6.0.tpg/CMakeLists.txt
 --- kscreenlocker-5.6.0/CMakeLists.txt	2016-03-17 10:50:44.000000000 +0000
-+++ kscreenlocker-5.6.0.tpg/CMakeLists.txt	2016-03-23 19:23:52.459108158 +0000
-@@ -37,6 +37,7 @@
++++ kscreenlocker-5.6.0.tpg/CMakeLists.txt	2016-03-26 02:45:06.315635523 +0000
+@@ -37,6 +37,8 @@
                      Solid
                      WindowSystem
                      XmlGui
++                    Plasma
 +                    PlasmaQuick
                      )
  
  find_package(X11)
 diff -Naur kscreenlocker-5.6.0/greeter/CMakeLists.txt kscreenlocker-5.6.0.tpg/greeter/CMakeLists.txt
 --- kscreenlocker-5.6.0/greeter/CMakeLists.txt	2016-03-17 10:49:59.000000000 +0000
-+++ kscreenlocker-5.6.0.tpg/greeter/CMakeLists.txt	2016-03-23 19:24:19.799846267 +0000
++++ kscreenlocker-5.6.0.tpg/greeter/CMakeLists.txt	2016-03-26 02:44:41.703983346 +0000
 @@ -30,6 +30,7 @@
                          KF5::I18n
                          KF5::ConfigGui
