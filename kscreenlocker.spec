@@ -44,11 +44,8 @@ Library and components for secure lock screen architecture.
 %{_datadir}/kconf_update/kscreenlocker.upd
 %{_datadir}/kconf_update/ksreenlocker_5_3_separate_autologin.pl
 %{_datadir}/knotifications5/ksmserver.notifyrc
-%{_datadir}/kservices5/plasma-screenlocker_kcm-screenlocker_kcm.desktop
 %{_datadir}/kservices5/screenlocker.desktop
 %{_datadir}/ksmserver/screenlocker/org.kde.passworddialog
-%{_datadir}/plasma/kcms/screenlocker_kcm/contents
-%{_datadir}/plasma/kcms/screenlocker_kcm/metadata.desktop
 
 #--------------------------------------------------------------------
 
