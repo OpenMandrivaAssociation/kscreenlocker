@@ -2,7 +2,7 @@
 
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
-Version:	5.6.5
+Version:	5.7.0
 Release:	1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
@@ -99,6 +99,6 @@ based on %{name}.
 %install
 %ninja_install -C build
 
-%find_lang kscreenlocker
-%find_lang kscreenlocker_greet
-%find_lang screenlocker_kcm
+%find_lang kscreenlocker || touch kscreenlocker.lang
+%find_lang kscreenlocker_greet || touch kscreenlocker_greet.lang
+%find_lang screenlocker_kcm || touch kscreenlocker_kcm.lang

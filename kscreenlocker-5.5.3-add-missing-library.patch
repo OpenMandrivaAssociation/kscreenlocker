@@ -1,19 +1,17 @@
-diff -Naur kscreenlocker-5.6.0/CMakeLists.txt kscreenlocker-5.6.0.tpg/CMakeLists.txt
---- kscreenlocker-5.6.0/CMakeLists.txt	2016-03-17 10:50:44.000000000 +0000
-+++ kscreenlocker-5.6.0.tpg/CMakeLists.txt	2016-03-26 02:45:06.315635523 +0000
-@@ -37,6 +37,8 @@
-                     Solid
+--- kscreenlocker-5.7.0/CMakeLists.txt.0001~	2016-07-04 19:21:25.888580235 +0200
++++ kscreenlocker-5.7.0/CMakeLists.txt	2016-07-04 19:22:41.705896207 +0200
+@@ -45,6 +45,8 @@ find_package(KF5 ${KF5_MIN_VERSION} REQU
+                     TextWidgets
                      WindowSystem
                      XmlGui
-+                    Plasma
-+                    PlasmaQuick
++		    Plasma
++		    PlasmaQuick
                      )
  
  find_package(X11)
-diff -Naur kscreenlocker-5.6.0/greeter/CMakeLists.txt kscreenlocker-5.6.0.tpg/greeter/CMakeLists.txt
---- kscreenlocker-5.6.0/greeter/CMakeLists.txt	2016-03-17 10:49:59.000000000 +0000
-+++ kscreenlocker-5.6.0.tpg/greeter/CMakeLists.txt	2016-03-26 02:44:41.703983346 +0000
-@@ -30,6 +30,7 @@
+--- kscreenlocker-5.7.0/greeter/CMakeLists.txt.0001~	2016-06-30 15:05:46.000000000 +0200
++++ kscreenlocker-5.7.0/greeter/CMakeLists.txt	2016-07-04 19:21:25.889580239 +0200
+@@ -30,6 +30,7 @@ target_link_libraries(kscreenlocker_gree
                          KF5::I18n
                          KF5::ConfigGui
                          KF5::Declarative
