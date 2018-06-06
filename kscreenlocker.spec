@@ -35,9 +35,13 @@ BuildRequires:	cmake(KF5Crash)
 BuildRequires:	cmake(KF5GlobalAccel)
 BuildRequires:	pam-devel
 Conflicts:      plasma-workspace < 5.5.0
+Requires(post):	psmisc
 
 %description
 Library and components for secure lock screen architecture.
+
+%post
+%{_bindir}/killall kscreenlocker_greet ||:
 
 %files -f kscreenlocker.lang,kscreenlocker_greet.lang,screenlocker_kcm.lang
 %{_libdir}/qt5/plugins/screenlocker_kcm.so
