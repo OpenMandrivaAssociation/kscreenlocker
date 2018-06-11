@@ -33,6 +33,12 @@ BuildRequires:	cmake(KF5IdleTime)
 BuildRequires:	cmake(KF5KDELibs4Support)
 BuildRequires:	cmake(KF5Crash)
 BuildRequires:	cmake(KF5GlobalAccel)
+BuildRequires:	pkgconfig(wayland-client)
+BuildRequires:	pkgconfig(wayland-server)
+BuildRequires:	pkgconfig(wayland-cursor)
+BuildRequires:	pkgconfig(wayland-egl)
+BuildRequires:	pkgconfig(wayland-scanner)
+BuildRequires:	wayland-tools
 BuildRequires:	pam-devel
 Conflicts:      plasma-workspace < 5.5.0
 Requires(post):	psmisc
