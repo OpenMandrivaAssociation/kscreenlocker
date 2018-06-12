@@ -3,7 +3,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	5.12.90
-Release:	1
+Release:	2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		http://kde.org/
@@ -23,6 +23,7 @@ BuildRequires:	pkgconfig(xcb-keysyms)
 BuildRequires:	pkgconfig(xcb)
 BuildRequires:	pkgconfig(xi)
 BuildRequires:	pkgconfig(libseccomp)
+BuildRequires:	pkgconfig(libevent)
 BuildRequires:	cmake(KF5I18n)
 BuildRequires:	cmake(KF5Wayland)
 BuildRequires:	cmake(KF5Plasma)
