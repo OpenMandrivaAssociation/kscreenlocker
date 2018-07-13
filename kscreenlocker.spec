@@ -3,7 +3,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	5.13.3
-Release:	1
+Release:	2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		http://kde.org/
@@ -48,7 +48,7 @@ Requires(post):	psmisc
 Library and components for secure lock screen architecture.
 
 %post
-%{_bindir}/killall kscreenlocker_greet ||:
+%{_bindir}/killall kscreenlocker_greet > /dev/null 2>&1
 
 %files -f kscreenlocker.lang -f kscreenlocker_greet.lang -f screenlocker_kcm.lang
 %{_libdir}/qt5/plugins/screenlocker_kcm.so
