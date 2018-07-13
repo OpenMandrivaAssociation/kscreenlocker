@@ -3,7 +3,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	5.12.6
-Release:	1
+Release:	2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		http://kde.org/
@@ -23,6 +23,7 @@ BuildRequires:	pkgconfig(xcb-keysyms)
 BuildRequires:	pkgconfig(xcb)
 BuildRequires:	pkgconfig(xi)
 BuildRequires:	pkgconfig(libseccomp)
+BuildRequires:	pkgconfig(libevent)
 BuildRequires:	cmake(KF5I18n)
 BuildRequires:	cmake(KF5Wayland)
 BuildRequires:	cmake(KF5Plasma)
@@ -35,9 +36,13 @@ BuildRequires:	cmake(KF5Crash)
 BuildRequires:	cmake(KF5GlobalAccel)
 BuildRequires:	pam-devel
 Conflicts:      plasma-workspace < 5.5.0
+Requires(post):      psmisc
 
 %description
 Library and components for secure lock screen architecture.
+
+%post
+%{_bindir}/killall kscreenlocker_greet ||:
 
 %files -f kscreenlocker.lang,kscreenlocker_greet.lang,screenlocker_kcm.lang
 %{_libdir}/qt5/plugins/screenlocker_kcm.so
