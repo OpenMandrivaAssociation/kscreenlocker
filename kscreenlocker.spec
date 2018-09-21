@@ -42,13 +42,12 @@ BuildRequires:	pkgconfig(wayland-scanner)
 BuildRequires:	wayland-tools
 BuildRequires:	pam-devel
 Conflicts:      plasma-workspace < 5.5.0
-Requires(post):	psmisc
 
 %description
 Library and components for secure lock screen architecture.
 
-%post
-%{_bindir}/killall kscreenlocker_greet > /dev/null 2>&1
+%triggerin
+%{_bindir}/killall kscreenlocker_greet > /dev/null 2>&1 ||:
 
 %files -f kscreenlocker.lang -f kscreenlocker_greet.lang -f screenlocker_kcm.lang
 %{_libdir}/qt5/plugins/screenlocker_kcm.so
