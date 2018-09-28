@@ -46,7 +46,7 @@ Conflicts:      plasma-workspace < 5.5.0
 %description
 Library and components for secure lock screen architecture.
 
-%triggerin
+%triggerin -- %{name} < %{EVRD}
 %{_bindir}/killall kscreenlocker_greet > /dev/null 2>&1 ||:
 
 %files -f kscreenlocker.lang -f kscreenlocker_greet.lang -f screenlocker_kcm.lang
