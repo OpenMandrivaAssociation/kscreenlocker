@@ -1,4 +1,5 @@
 removed_sources:
   kscreenlocker-5.12.3.tar.xz: 05719d2f5a1c0c273c802a51e6e644217bc2bb63
-sources:
   kscreenlocker-5.12.6.tar.xz: 01f9905c8ced1b28a52af050ecadbf3062489007
+sources:
+  kscreenlocker-5.12.7.tar.xz: 461b144faa2c4eea73e194a1efa58d935d30eea0
