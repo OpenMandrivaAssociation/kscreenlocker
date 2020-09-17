@@ -2,7 +2,7 @@
 
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
-Version:	5.19.5
+Version:	5.19.90
 Release:	1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
@@ -49,8 +49,7 @@ Library and components for secure lock screen architecture.
 %triggerin -- %{name} < %{EVRD}
 %{_bindir}/killall kscreenlocker_greet > /dev/null 2>&1 ||:
 
-%files -f kscreenlocker.lang -f kscreenlocker_greet.lang -f screenlocker_kcm.lang
-%{_libdir}/qt5/plugins/screenlocker_kcm.so
+%files -f kscreenlocker.lang -f kscreenlocker_greet.lang -f kcm_screenlocker.lang
 %attr(4755,root,root) %{_libdir}/libexec/kcheckpass
 %{_libdir}/libexec/kscreenlocker_greet
 %{_datadir}/dbus-1/interfaces/kf5_org.freedesktop.ScreenSaver.xml
@@ -60,6 +59,8 @@ Library and components for secure lock screen architecture.
 %{_datadir}/kservices5/screenlocker.desktop
 %{_datadir}/ksmserver/screenlocker/org.kde.passworddialog
 %{_datadir}/dbus-1/interfaces/org.kde.screensaver.xml
+%{_libdir}/qt5/plugins/kcms/kcm_screenlocker.so
+%{_datadir}/kpackage/kcms/kcm_screenlocker
 
 #--------------------------------------------------------------------
 
@@ -112,4 +113,4 @@ based on %{name}.
 
 %find_lang kscreenlocker || touch kscreenlocker.lang
 %find_lang kscreenlocker_greet || touch kscreenlocker_greet.lang
-%find_lang screenlocker_kcm || touch kscreenlocker_kcm.lang
+%find_lang kcm_screenlocker || touch kcm_screenlocker.lang

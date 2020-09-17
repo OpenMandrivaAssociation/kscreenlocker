@@ -1,7 +1,8 @@
---- kscreenlocker-5.7.0/CMakeLists.txt.0001~	2016-07-04 19:21:25.888580235 +0200
-+++ kscreenlocker-5.7.0/CMakeLists.txt	2016-07-04 19:22:41.705896207 +0200
-@@ -45,6 +45,8 @@ find_package(KF5 ${KF5_MIN_VERSION} REQU
-                     TextWidgets
+diff -up kscreenlocker-5.19.90/CMakeLists.txt.2~ kscreenlocker-5.19.90/CMakeLists.txt
+--- kscreenlocker-5.19.90/CMakeLists.txt.2~	2020-09-17 17:52:07.026456284 +0200
++++ kscreenlocker-5.19.90/CMakeLists.txt	2020-09-17 18:00:36.765547823 +0200
+@@ -59,6 +59,8 @@ find_package(KF5 ${KF5_MIN_VERSION} REQU
+                     Solid
                      WindowSystem
                      XmlGui
 +		    Plasma
@@ -9,9 +10,10 @@
                      )
  
  find_package(X11)
---- kscreenlocker-5.7.0/greeter/CMakeLists.txt.0001~	2016-06-30 15:05:46.000000000 +0200
-+++ kscreenlocker-5.7.0/greeter/CMakeLists.txt	2016-07-04 19:21:25.889580239 +0200
-@@ -30,6 +30,7 @@ target_link_libraries(kscreenlocker_gree
+diff -up kscreenlocker-5.19.90/greeter/CMakeLists.txt.2~ kscreenlocker-5.19.90/greeter/CMakeLists.txt
+--- kscreenlocker-5.19.90/greeter/CMakeLists.txt.2~	2020-09-17 13:04:47.000000000 +0200
++++ kscreenlocker-5.19.90/greeter/CMakeLists.txt	2020-09-17 17:52:07.026456284 +0200
+@@ -42,6 +42,7 @@ target_link_libraries(kscreenlocker_gree
                          KF5::I18n
                          KF5::ConfigGui
                          KF5::Declarative
