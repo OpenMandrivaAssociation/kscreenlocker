@@ -2,7 +2,7 @@
 
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
-Version:	5.21.5
+Version:	5.22.0
 Release:	1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
@@ -34,6 +34,7 @@ BuildRequires:	cmake(KF5IdleTime)
 BuildRequires:	cmake(KF5KDELibs4Support)
 BuildRequires:	cmake(KF5Crash)
 BuildRequires:	cmake(KF5GlobalAccel)
+BuildRequires:	cmake(LayerShellQt)
 BuildRequires:	pkgconfig(wayland-client)
 BuildRequires:	pkgconfig(wayland-server)
 BuildRequires:	pkgconfig(wayland-cursor)
