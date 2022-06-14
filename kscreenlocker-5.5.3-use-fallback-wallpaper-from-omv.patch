@@ -1,9 +1,9 @@
-diff -Naur kscreenlocker-5.5.3/greeter/fallbacktheme/LockScreen.qml kscreenlocker-5.5.3.tpg/greeter/fallbacktheme/LockScreen.qml
---- kscreenlocker-5.5.3/greeter/fallbacktheme/LockScreen.qml	2016-01-06 12:05:43.000000000 +0000
-+++ kscreenlocker-5.5.3.tpg/greeter/fallbacktheme/LockScreen.qml	2016-01-22 23:31:09.329582822 +0000
-@@ -46,7 +46,7 @@
-     Image {
+diff -up kscreenlocker-5.25.0/greeter/fallbacktheme/LockScreen.qml.1~ kscreenlocker-5.25.0/greeter/fallbacktheme/LockScreen.qml
+--- kscreenlocker-5.25.0/greeter/fallbacktheme/LockScreen.qml.1~	2022-06-14 17:36:30.646303721 +0200
++++ kscreenlocker-5.25.0/greeter/fallbacktheme/LockScreen.qml	2022-06-14 17:38:55.020249054 +0200
+@@ -48,7 +48,7 @@ Item {
          id: background
+ 
          anchors.fill: parent
 -        source: theme.wallpaperPathForSize(parent.width, parent.height)
 +        source: ""/usr/share/mdk/backgrounds/OpenMandriva-splash.png""

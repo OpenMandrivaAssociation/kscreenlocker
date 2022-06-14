@@ -2,8 +2,8 @@
 
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
-Version:	5.24.5
-Release:	2
+Version:	5.25.0
+Release:	1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		http://kde.org/
@@ -51,17 +51,16 @@ Library and components for secure lock screen architecture.
 %{_bindir}/killall kscreenlocker_greet > /dev/null 2>&1 ||:
 
 %files -f kscreenlocker.lang -f kscreenlocker_greet.lang -f kcm_screenlocker.lang
-%attr(4755,root,root) %{_libdir}/libexec/kcheckpass
 %{_libdir}/libexec/kscreenlocker_greet
 %{_datadir}/dbus-1/interfaces/kf5_org.freedesktop.ScreenSaver.xml
 %{_datadir}/kconf_update/kscreenlocker.upd
 %{_datadir}/kconf_update/ksreenlocker_5_3_separate_autologin.pl
 %{_datadir}/knotifications5/ksmserver.notifyrc
-%{_datadir}/kservices5/screenlocker.desktop
 %{_datadir}/ksmserver/screenlocker/org.kde.passworddialog
 %{_datadir}/dbus-1/interfaces/org.kde.screensaver.xml
-%{_libdir}/qt5/plugins/kcms/kcm_screenlocker.so
 %{_datadir}/kpackage/kcms/kcm_screenlocker
+%{_libdir}/qt5/plugins/plasma/kcms/systemsettings/kcm_screenlocker.so
+%{_datadir}/applications/kcm_screenlocker.desktop
 
 #--------------------------------------------------------------------
 
