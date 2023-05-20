@@ -15,6 +15,7 @@ Source0:	https://invent.kde.org/plasma/kscreenlocker/-/archive/master/kscreenloc
 Source0:	http://download.kde.org//%{stable}/plasma/%(echo %{version} |cut -d. -f1-3)/%{name}-%{version}.tar.xz
 %endif
 Patch0:		kscreenlocker-5.5.3-use-fallback-wallpaper-from-omv.patch
+Patch1:		kscreenlocker-bump-soname.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	cmake(Qt6)
 BuildRequires:	cmake(Qt6Core)
@@ -73,8 +74,8 @@ Library and components for secure lock screen architecture.
 
 #--------------------------------------------------------------------
 
-%define kscreenlocker_major 5
-%define libkscreenlocker %mklibname kscreenlocker %{kscreenlocker_major}
+%define kscreenlocker_major 6
+%define libkscreenlocker %mklibname kscreenlocker
 
 %package -n %{libkscreenlocker}
 Summary:	Library and components for secure lock screen architecture 
@@ -84,7 +85,7 @@ Group:		System/Libraries
 Library and components for secure lock screen architecture.
 
 %files -n %{libkscreenlocker}
-%{_libdir}/libKScreenLocker.so.%{kscreenlocker_major}*
+%{_libdir}/libKScreenLocker.so.*
 
 #--------------------------------------------------------------------
 
