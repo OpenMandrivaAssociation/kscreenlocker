@@ -1,6 +1,6 @@
 %define stable %([ "`echo %{version} |cut -d. -f3`" -ge 80 ] && echo -n un; echo -n stable)
 
-%define git 20230527
+%define git 20230606
 
 Summary:	Library and components for secure lock screen architecture
 Name:		plasma6-kscreenlocker
