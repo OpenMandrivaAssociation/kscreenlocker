@@ -1,6 +1,6 @@
 %define stable %([ "`echo %{version} |cut -d. -f3`" -ge 80 ] && echo -n un; echo -n stable)
 
-%define git 20230606
+%define git 20230609
 
 Summary:	Library and components for secure lock screen architecture
 Name:		plasma6-kscreenlocker
@@ -67,7 +67,6 @@ Library and components for secure lock screen architecture.
 %{_datadir}/knotifications6/ksmserver.notifyrc
 %{_datadir}/ksmserver/screenlocker/org.kde.passworddialog
 %{_datadir}/dbus-1/interfaces/org.kde.screensaver.xml
-%{_datadir}/kpackage/kcms/kcm_screenlocker
 %{_qtdir}/plugins/plasma/kcms/systemsettings/kcm_screenlocker.so
 %{_datadir}/applications/kcm_screenlocker.desktop
 %{_datadir}/qlogging-categories6/kscreenlocker.categories
