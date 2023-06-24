@@ -32,7 +32,7 @@ BuildRequires:	cmake(KF5IdleTime)
 BuildRequires:	cmake(KF5KDELibs4Support)
 BuildRequires:	cmake(KF5Crash)
 BuildRequires:	cmake(KF5GlobalAccel)
-BuildRequires:	cmake(LayerShellQt)
+BuildRequires:	cmake(LayerShellQt) < 5.27.50
 BuildRequires:	cmake(KF5Screen)
 BuildRequires:	pkgconfig(wayland-client)
 BuildRequires:	pkgconfig(wayland-server)
