@@ -44,6 +44,7 @@ BuildRequires:	cmake(KF6GlobalAccel)
 BuildRequires:	cmake(LayerShellQt) >= 5.27.80
 BuildRequires:	cmake(KF6Screen)
 BuildRequires:	cmake(KF6Notifications)
+BuildRequires:	cmake(KF6Svg)
 BuildRequires:	pkgconfig(wayland-client)
 BuildRequires:	pkgconfig(wayland-server)
 BuildRequires:	pkgconfig(wayland-cursor)
