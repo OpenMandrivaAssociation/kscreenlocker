@@ -1,6 +1,6 @@
 %define stable %([ "`echo %{version} |cut -d. -f3`" -ge 80 ] && echo -n un; echo -n stable)
 
-%define git 20231023
+%define git 20231103
 
 Summary:	Library and components for secure lock screen architecture
 Name:		plasma6-kscreenlocker
@@ -15,7 +15,6 @@ Source0:	https://invent.kde.org/plasma/kscreenlocker/-/archive/master/kscreenloc
 Source0:	http://download.kde.org//%{stable}/plasma/%(echo %{version} |cut -d. -f1-3)/%{name}-%{version}.tar.xz
 %endif
 Patch0:		kscreenlocker-5.5.3-use-fallback-wallpaper-from-omv.patch
-Patch1:		kscreenlocker-bump-soname.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	cmake(Qt6)
 BuildRequires:	cmake(Qt6Core)
