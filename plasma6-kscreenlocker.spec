@@ -4,7 +4,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		plasma6-kscreenlocker
 Version:	5.27.80
-Release:	%{?git:0.%{git}.}1
+Release:	%{?git:0.%{git}.}2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		http://kde.org/
