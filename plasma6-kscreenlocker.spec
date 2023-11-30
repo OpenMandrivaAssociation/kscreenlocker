@@ -3,8 +3,8 @@
 
 Summary:	Library and components for secure lock screen architecture
 Name:		plasma6-kscreenlocker
-Version:	5.27.80
-Release:	%{?git:0.%{git}.}2
+Version:	5.90.0
+Release:	%{?git:0.%{git}.}1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		http://kde.org/
@@ -31,9 +31,9 @@ BuildRequires:	pkgconfig(xi)
 BuildRequires:	pkgconfig(libseccomp)
 BuildRequires:	pkgconfig(libevent)
 BuildRequires:	cmake(KF6I18n)
-BuildRequires:	cmake(KF6Wayland)
-BuildRequires:	cmake(KF6Plasma)
-BuildRequires:	cmake(KF6PlasmaQuick)
+BuildRequires:	cmake(Wayland) >= 5.90.0
+BuildRequires:	cmake(Plasma) >= 5.90.0
+BuildRequires:	cmake(PlasmaQuick) >= 5.90.0
 BuildRequires:	cmake(KF6KCMUtils)
 BuildRequires:	cmake(KF6Declarative)
 BuildRequires:	cmake(KF6IdleTime)
