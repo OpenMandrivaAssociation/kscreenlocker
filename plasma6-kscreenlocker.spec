@@ -52,8 +52,6 @@ BuildRequires:	pkgconfig(wayland-egl)
 BuildRequires:	pkgconfig(wayland-scanner)
 BuildRequires:	wayland-tools
 BuildRequires:	pam-devel
-# Prevent Plasma 5 dep
-BuildRequires:	plasma6-xdg-desktop-portal-kde
 Conflicts:      plasma-workspace < 5.5.0
 
 %description
