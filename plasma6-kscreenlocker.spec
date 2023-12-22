@@ -3,7 +3,7 @@
 
 Summary:	Library and components for secure lock screen architecture
 Name:		plasma6-kscreenlocker
-Version:	5.90.0
+Version:	5.91.0
 Release:	%{?git:0.%{git}.}1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
@@ -63,8 +63,6 @@ Library and components for secure lock screen architecture.
 %files -f kscreenlocker.lang -f kscreenlocker_greet.lang -f kcm_screenlocker.lang
 %{_libdir}/libexec/kscreenlocker_greet
 %{_datadir}/dbus-1/interfaces/kf6_org.freedesktop.ScreenSaver.xml
-%{_datadir}/kconf_update/kscreenlocker.upd
-%{_datadir}/kconf_update/ksreenlocker_5_3_separate_autologin.pl
 %{_datadir}/knotifications6/ksmserver.notifyrc
 %{_datadir}/ksmserver/screenlocker/org.kde.passworddialog
 %{_datadir}/dbus-1/interfaces/org.kde.screensaver.xml
