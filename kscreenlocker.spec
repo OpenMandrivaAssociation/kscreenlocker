@@ -6,7 +6,7 @@ Version:	5.27.11
 Release:	2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
-URL:		http://kde.org/
+URL:		https://kde.org/
 Source0:	http://download.kde.org//%{stable}/plasma/%(echo %{version} |cut -d. -f1-3)/%{name}-%{version}.tar.xz
 Patch0:		kscreenlocker-5.5.3-use-fallback-wallpaper-from-omv.patch
 BuildRequires:	cmake(ECM)
