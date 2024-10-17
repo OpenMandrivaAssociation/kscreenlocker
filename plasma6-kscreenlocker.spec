@@ -9,7 +9,7 @@ Version:	6.2.1
 Release:	%{?git:0.%{git}.}1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
-URL:		http://kde.org/
+URL:		https://kde.org/
 %if 0%{?git:1}
 Source0:	https://invent.kde.org/plasma/kscreenlocker/-/archive/%{gitbranch}/kscreenlocker-%{gitbranchd}.tar.bz2#/kscreenlocker-%{git}.tar.bz2
 %else
