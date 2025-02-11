@@ -5,7 +5,7 @@
 
 Summary:	Library and components for secure lock screen architecture
 Name:		plasma6-kscreenlocker
-Version:	6.2.5
+Version:	6.3.0
 Release:	%{?git:0.%{git}.}1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
@@ -16,7 +16,6 @@ Source0:	https://invent.kde.org/plasma/kscreenlocker/-/archive/%{gitbranch}/kscr
 Source0:	http://download.kde.org//%{stable}/plasma/%(echo %{version} |cut -d. -f1-3)/kscreenlocker-%{version}.tar.xz
 %endif
 Patch0:		kscreenlocker-5.5.3-use-fallback-wallpaper-from-omv.patch
-Patch1:		kscreenlocker-6.2.0-qt-6.8.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	cmake(Qt6)
 BuildRequires:	cmake(Qt6Core)
