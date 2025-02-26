@@ -32,6 +32,7 @@ BuildRequires:	pkgconfig(xcb)
 BuildRequires:	pkgconfig(xi)
 BuildRequires:	pkgconfig(libseccomp)
 BuildRequires:	pkgconfig(libevent)
+BuildRequires:	pkgconfig(xkbcommon)
 BuildRequires:	cmake(KF6I18n)
 BuildRequires:	cmake(Wayland) >= 5.90.0
 BuildRequires:	cmake(Plasma) >= 5.90.0
