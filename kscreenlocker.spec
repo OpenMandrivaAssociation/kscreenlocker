@@ -4,9 +4,9 @@
 %define gitbranchd %(echo %{gitbranch} |sed -e "s,/,-,g")
 
 Summary:	Library and components for secure lock screen architecture
-Name:		plasma6-kscreenlocker
+Name:		kscreenlocker
 Version:	6.3.4
-Release:	%{?git:0.%{git}.}2
+Release:	%{?git:0.%{git}.}3
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		https://kde.org/
@@ -56,6 +56,11 @@ BuildRequires:	pkgconfig(wayland-scanner)
 BuildRequires:	wayland-tools
 BuildRequires:	pam-devel
 Conflicts:      plasma-workspace < 5.5.0
+BuildSystem:	cmake
+BuildOption:	-DBUILD_QCH:BOOL=ON
+BuildOption:	-DKDE_INSTALL_USE_QT_SYS_PATHS:BOOL=ON
+# Renamed 2025-05-01 after 6.0
+%rename plasma6-kscreenlocker
 
 %description
 Library and components for secure lock screen architecture.
@@ -63,7 +68,7 @@ Library and components for secure lock screen architecture.
 %triggerin -- %{name} < %{EVRD}
 %{_bindir}/killall kscreenlocker_greet > /dev/null 2>&1 ||:
 
-%files -f kscreenlocker.lang -f kscreenlocker_greet.lang -f kcm_screenlocker.lang
+%files -f %{name}.lang
 %{_libdir}/libexec/kscreenlocker_greet
 %{_datadir}/dbus-1/interfaces/kf6_org.freedesktop.ScreenSaver.xml
 %{_datadir}/knotifications6/ksmserver.notifyrc
@@ -109,23 +114,3 @@ based on %{name}.
 %{_includedir}/KScreenLocker
 %{_libdir}/cmake/KScreenLocker
 %{_libdir}/cmake/ScreenSaverDBusInterface
-
-#--------------------------------------------------------------------
-
-%prep
-%autosetup -p1 -n kscreenlocker-%{?git:%{gitbranchd}}%{?!git:%{version}}
-%cmake \
-	-DBUILD_QCH:BOOL=ON \
-	-DBUILD_WITH_QT6:BOOL=ON \
-	-DKDE_INSTALL_USE_QT_SYS_PATHS:BOOL=ON \
-	-G Ninja
-
-%build
-%ninja_build -C build
-
-%install
-%ninja_install -C build
-
-%find_lang kscreenlocker || touch kscreenlocker.lang
-%find_lang kscreenlocker_greet || touch kscreenlocker_greet.lang
-%find_lang kcm_screenlocker || touch kcm_screenlocker.lang
