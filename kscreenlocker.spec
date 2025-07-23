@@ -6,7 +6,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	6.4.2
-Release:	%{?git:0.%{git}.}1
+Release:	%{?git:0.%{git}.}2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		https://kde.org/
@@ -81,11 +81,13 @@ Library and components for secure lock screen architecture.
 #--------------------------------------------------------------------
 
 %define kscreenlocker_major 6
-%define libkscreenlocker plasma6-%{mklibname kscreenlocker}
+%define oldlibkscreenlocker plasma6-%{mklibname kscreenlocker}
+%define libkscreenlocker %{mklibname kscreenlocker}
 
 %package -n %{libkscreenlocker}
 Summary:	Library and components for secure lock screen architecture 
 Group:		System/Libraries
+%rename %{oldlibkscreenlocker}
 
 %description -n %{libkscreenlocker}
 Library and components for secure lock screen architecture.
@@ -95,7 +97,8 @@ Library and components for secure lock screen architecture.
 
 #--------------------------------------------------------------------
 
-%define kscreenlocker_devel plasma6-%{mklibname kscreenlocker -d}
+%define oldkscreenlocker_devel plasma6-%{mklibname kscreenlocker -d}
+%define kscreenlocker_devel %{mklibname kscreenlocker -d}
 
 %package -n %{kscreenlocker_devel}
 Summary:        Devel stuff for %{name}
@@ -104,6 +107,7 @@ Requires:       %{name} = %{EVRD}
 Requires:       %{libkscreenlocker} = %{EVRD}
 Requires:       cmake(Qt6DBus)
 Provides:       %{name}-devel = %{EVRD}
+%rename %{oldkscreenlocker_devel}
 
 %description -n %{kscreenlocker_devel}
 This package contains header files needed if you wish to build applications
