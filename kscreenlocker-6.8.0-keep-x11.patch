@@ -1,0 +1,300 @@
+diff -ruN a/greeter/CMakeLists.txt b/greeter/CMakeLists.txt
+--- a/greeter/CMakeLists.txt	2026-10-10 12:50:25.000000000 +0200
++++ b/greeter/CMakeLists.txt	2026-10-18 19:08:09.112116061 +0200
+@@ -29,9 +29,11 @@
+    greeterapp.cpp
+    main.cpp
+    noaccessnetworkaccessmanagerfactory.cpp
++   x11grab.cpp
+    ../logind.cpp
+    greeterapp.h
+    noaccessnetworkaccessmanagerfactory.h
++   x11grab.h
+    ../logind.h
+ )
+ 
+@@ -65,6 +67,16 @@
+ 
+ ecm_add_qml_module(kscreenlocker_greet URI org.kde.kscreenlocker VERSION 1.0)
+ 
++# The greeter grabs the X11 keyboard, pointer and XInput2 devices itself.
++# On Wayland this is a no-op and KWin keeps confining input.
++# QX11Info lives in Qt Gui private headers, which are not pulled in by Qt6::Gui.
++find_package(Qt6GuiPrivate REQUIRED NO_MODULE)
++find_package(XCB REQUIRED COMPONENTS XCB)
++find_package(X11 REQUIRED)
++if(NOT X11_Xi_FOUND)
++    message(FATAL_ERROR "libXi is required so the X11 screen lock covers XInput2 master devices")
++endif()
++
+ target_link_libraries(kscreenlocker_greet PRIVATE
+     settings
+     kscreenlocker_authenticator
+@@ -81,8 +93,14 @@
+     Qt::Qml
+     LayerShellQt::Interface
+     KF6::ScreenDpms
++    Qt::GuiPrivate
++    XCB::XCB
++    X11::X11
++    X11::Xi
+ )
+ 
++target_compile_definitions(kscreenlocker_greet PRIVATE HAVE_X11_XI=1)
++
+ qt_generate_foreign_qml_types(kscreenlocker_authenticator kscreenlocker_greet)
+ 
+ # manually install type info since it's not installed by default for executables but we want it
+diff -ruN a/greeter/greeterapp.cpp b/greeter/greeterapp.cpp
+--- a/greeter/greeterapp.cpp	2026-10-10 12:50:25.000000000 +0200
++++ b/greeter/greeterapp.cpp	2026-10-18 18:59:47.883172195 +0200
+@@ -5,6 +5,7 @@
+ SPDX-License-Identifier: GPL-2.0-or-later
+ */
+ #include "greeterapp.h"
++#include "x11grab.h"
+ #include "kscreensaversettingsbase.h"
+ #include "noaccessnetworkaccessmanagerfactory.h"
+ #include "shell_integration.h"
+@@ -13,6 +14,7 @@
+ #include "../logind.h"
+ 
+ #include <config-kscreenlocker.h>
++#include <cstdlib>
+ #include <iostream>
+ #include <unistd.h>
+ #include <kscreenlocker_greet_logging.h>
+@@ -177,6 +179,7 @@
+ 
+ UnlockApp::~UnlockApp()
+ {
++    releaseX11InputGrab();
+     // workaround QTBUG-55460
+     // will be fixed when themes port to QQC2
+     for (auto view : std::as_const(m_views)) {
+@@ -267,6 +270,13 @@
+ 
+ void UnlockApp::initialViewSetup()
+ {
++    // Testing mode must stay usable under a debugger, so it does not grab.
++    // A failed grab has to abort: ksld restarts the greeter instead of
++    // announcing a lock that other X clients can still type into.
++    if (!m_testing && !establishX11InputGrab()) {
++        qCCritical(KSCREENLOCKER_GREET) << "Refusing to start the greeter without an X11 input grab";
++        ::exit(1);
++    }
+     for (QScreen *screen : screens()) {
+         handleScreen(screen);
+     }
+@@ -455,13 +465,15 @@
+     // ie. "type something into the box of every greeter"
+     for (QQuickView *view : std::as_const(m_views)) {
+         if (!m_testing) {
+-            view->setKeyboardGrabEnabled(true); // TODO - check whether this still works in master!
++            view->setKeyboardGrabEnabled(true);
++            view->setMouseGrabEnabled(true);
+         }
+     }
+     // activate window and grab input to be sure it really ends up there.
+     // focus setting is still required for proper internal QWidget state (and eg. visual reflection)
+     if (!m_testing) {
+-        activeScreen->setKeyboardGrabEnabled(true); // TODO - check whether this still works in master!
++        activeScreen->setKeyboardGrabEnabled(true);
++        activeScreen->setMouseGrabEnabled(true);
+     }
+     activeScreen->requestActivate();
+ }
+diff -ruN a/greeter/x11grab.cpp b/greeter/x11grab.cpp
+--- a/greeter/x11grab.cpp	1970-01-01 01:00:00.000000000 +0100
++++ b/greeter/x11grab.cpp	2026-10-18 19:08:09.137597571 +0200
+@@ -0,0 +1,173 @@
++/*
++    SPDX-FileCopyrightText: 2011 Martin Gräßlin <mgraesslin@kde.org>
++    SPDX-FileCopyrightText: 2026 OpenMandriva
++
++    SPDX-License-Identifier: GPL-2.0-or-later
++*/
++
++#include "x11grab.h"
++
++#include "kscreenlocker_greet_logging.h"
++
++#include <QString>
++#include <QThread>
++
++#include <QtGui/private/qtx11extras_p.h>
++
++#include <xcb/xcb.h>
++
++#include <X11/Xlib.h>
++#include <X11/extensions/XInput2.h>
++
++namespace
++{
++bool s_grabbed = false;
++
++constexpr unsigned int grabEventMask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask | EnterWindowMask | LeaveWindowMask;
++
++#if HAVE_X11_XI
++bool grabXi2MasterDevices(Display *dpy)
++{
++    int opcode, event, error;
++    if (!XQueryExtension(dpy, "XInputExtension", &opcode, &event, &error)) {
++        qCWarning(KSCREENLOCKER_GREET) << "XInput2 is not available; X11 lock would not cover all devices";
++        return false;
++    }
++
++    int numMasters = 0;
++    XIDeviceInfo *masters = XIQueryDevice(dpy, XIAllMasterDevices, &numMasters);
++    if (!masters) {
++        return false;
++    }
++
++    bool success = true;
++    for (int i = 0; i < numMasters; ++i) {
++        // Core devices are already covered by XGrabKeyboard / XGrabPointer.
++        const char *name = masters[i].name;
++        if (name && (qstrcmp(name, "Virtual core pointer") == 0 || qstrcmp(name, "Virtual core keyboard") == 0)) {
++            continue;
++        }
++        unsigned char maskBits[XIMaskLen(XI_LASTEVENT)] = {};
++        XIEventMask mask;
++        mask.deviceid = masters[i].deviceid;
++        mask.mask = maskBits;
++        mask.mask_len = sizeof(maskBits);
++        XISetMask(maskBits, XI_ButtonPress);
++        XISetMask(maskBits, XI_ButtonRelease);
++        XISetMask(maskBits, XI_Motion);
++        XISetMask(maskBits, XI_Enter);
++        XISetMask(maskBits, XI_Leave);
++        XISetMask(maskBits, XI_KeyPress);
++        XISetMask(maskBits, XI_KeyRelease);
++        const int result = XIGrabDevice(dpy,
++                                         masters[i].deviceid,
++                                         QX11Info::appRootWindow(),
++                                         XCB_TIME_CURRENT_TIME,
++                                         XCB_CURSOR_NONE,
++                                         XIGrabModeAsync,
++                                         XIGrabModeAsync,
++                                         True,
++                                         &mask);
++        if (result != XIGrabSuccess) {
++            success = false;
++            break;
++        }
++    }
++    if (!success) {
++        for (int i = 0; i < numMasters; ++i) {
++            XIUngrabDevice(dpy, masters[i].deviceid, XCB_TIME_CURRENT_TIME);
++        }
++    }
++    XIFreeDeviceInfo(masters);
++    return success;
++}
++
++void ungrabXi2MasterDevices(Display *dpy)
++{
++    int numMasters = 0;
++    XIDeviceInfo *masters = XIQueryDevice(dpy, XIAllMasterDevices, &numMasters);
++    if (!masters) {
++        return;
++    }
++    for (int i = 0; i < numMasters; ++i) {
++        XIUngrabDevice(dpy, masters[i].deviceid, XCB_TIME_CURRENT_TIME);
++    }
++    XIFreeDeviceInfo(masters);
++}
++#endif
++}
++
++bool establishX11InputGrab()
++{
++    if (!QX11Info::isPlatformX11()) {
++        return true;
++    }
++    if (s_grabbed) {
++        return true;
++    }
++
++    Display *dpy = QX11Info::display();
++    xcb_connection_t *connection = QX11Info::connection();
++    if (!dpy || !connection) {
++        qCCritical(KSCREENLOCKER_GREET) << "X11 connection is missing; cannot lock input";
++        return false;
++    }
++
++    // Another client may still be releasing a grab. Retry briefly, and hold the
++    // server grab only while the keyboard and pointer grabs are taken together.
++    for (int attempt = 0; attempt < 30; ++attempt) {
++        XSync(dpy, False);
++        // One Xlib buffer, so the server grab cannot be released before the
++        // keyboard and pointer grabs are on the wire.
++        XGrabServer(dpy);
++
++        const bool keyboard = XGrabKeyboard(dpy, QX11Info::appRootWindow(), True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess;
++        const bool pointer = keyboard && XGrabPointer(dpy, QX11Info::appRootWindow(), True, grabEventMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime) == GrabSuccess;
++#if HAVE_X11_XI
++        const bool xi = pointer && grabXi2MasterDevices(dpy);
++#else
++        const bool xi = pointer;
++#endif
++        XUngrabServer(dpy);
++        XFlush(dpy);
++
++        if (keyboard && pointer && xi) {
++            s_grabbed = true;
++            qCDebug(KSCREENLOCKER_GREET) << "X11 input grab established";
++            return true;
++        }
++
++        if (keyboard) {
++            XUngrabKeyboard(dpy, CurrentTime);
++        }
++        if (pointer) {
++            XUngrabPointer(dpy, CurrentTime);
++        }
++        XFlush(dpy);
++        QThread::msleep(10);
++    }
++
++    qCCritical(KSCREENLOCKER_GREET) << "Could not grab the X11 keyboard and pointer";
++    return false;
++}
++
++void releaseX11InputGrab()
++{
++    if (!s_grabbed || !QX11Info::isPlatformX11()) {
++        s_grabbed = false;
++        return;
++    }
++    Display *dpy = QX11Info::display();
++    xcb_connection_t *connection = QX11Info::connection();
++    if (!dpy || !connection) {
++        s_grabbed = false;
++        return;
++    }
++#if HAVE_X11_XI
++    ungrabXi2MasterDevices(dpy);
++#endif
++    XUngrabKeyboard(dpy, CurrentTime);
++    XUngrabPointer(dpy, CurrentTime);
++    XFlush(dpy);
++    s_grabbed = false;
++}
+diff -ruN a/greeter/x11grab.h b/greeter/x11grab.h
+--- a/greeter/x11grab.h	1970-01-01 01:00:00.000000000 +0100
++++ b/greeter/x11grab.h	2026-10-18 18:59:35.899137877 +0200
+@@ -0,0 +1,13 @@
++/*
++    SPDX-FileCopyrightText: 2026 OpenMandriva
++
++    SPDX-License-Identifier: GPL-2.0-or-later
++*/
++#pragma once
++
++// On X11, grab the keyboard, pointer, and XInput2 master devices so other
++// clients cannot see or inject input while the greeter is up.
++// Wayland sessions return true and grab nothing; KWin already confines input.
++// A false return means the X11 lock would be insecure and the greeter must exit.
++bool establishX11InputGrab();
++void releaseX11InputGrab();

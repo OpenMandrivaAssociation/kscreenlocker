@@ -5,7 +5,7 @@
 
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
-Version:	6.7.5
+Version:	6.8.0
 Release:	%{?git:0.%{git}.}1
 License:	GPLv2+
 Group:		Graphical desktop/KDE
@@ -15,6 +15,9 @@ Source0:	https://invent.kde.org/plasma/kscreenlocker/-/archive/%{gitbranch}/kscr
 %else
 Source0:	http://download.kde.org//%{stable}/plasma/%(echo %{version} |cut -d. -f1-3)/kscreenlocker-%{version}.tar.xz
 %endif
+# 6.8 dropped the X11 input grab. On X11 the greeter grabs the keyboard,
+# pointer and XInput2 master devices. On Wayland the grab is a no-op.
+Patch0:		kscreenlocker-6.8.0-keep-x11.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	cmake(Qt6)
 BuildRequires:	cmake(Qt6Core)
@@ -35,15 +38,15 @@ BuildRequires:	pkgconfig(libevent)
 BuildRequires:	pkgconfig(xkbcommon)
 BuildRequires:	cmake(KF6I18n)
 BuildRequires:	cmake(Wayland) >= 5.90.0
-BuildRequires:	cmake(Plasma) >= 5.90.0
-BuildRequires:	cmake(PlasmaQuick) >= 5.90.0
+BuildRequires:	cmake(Plasma) >= 6.8
+BuildRequires:	cmake(PlasmaQuick) >= 6.8
 BuildRequires:	cmake(KF6KCMUtils)
 BuildRequires:	cmake(KF6Declarative)
 BuildRequires:	cmake(KF6IdleTime)
 BuildRequires:	cmake(KF6Crash)
 BuildRequires:	cmake(KF6GlobalAccel)
-BuildRequires:	cmake(LayerShellQt) >= 5.27.80
-BuildRequires:	cmake(KF6Screen)
+BuildRequires:	cmake(LayerShellQt) >= 6.8
+BuildRequires:	cmake(KF6Screen) >= 6.8
 BuildRequires:	cmake(KF6Notifications)
 BuildRequires:	cmake(KF6Svg)
 BuildRequires:	cmake(KF6KIO)
@@ -70,9 +73,11 @@ Library and components for secure lock screen architecture.
 
 %files -f %{name}.lang
 %{_libdir}/libexec/kscreenlocker_greet
+%{_libdir}/libexec/kscreenlocker_worker
 %{_datadir}/dbus-1/interfaces/kf6_org.freedesktop.ScreenSaver.xml
 %{_datadir}/knotifications6/ksmserver.notifyrc
-%{_datadir}/ksmserver/screenlocker/org.kde.passworddialog
+%{_datadir}/config.kcfg/kscreenlockersettings.kcfg
+%{_qtdir}/qml/org/kde/kscreenlocker
 %{_datadir}/dbus-1/interfaces/org.kde.screensaver.xml
 %{_qtdir}/plugins/plasma/kcms/systemsettings/kcm_screenlocker.so
 %{_datadir}/applications/kcm_screenlocker.desktop
