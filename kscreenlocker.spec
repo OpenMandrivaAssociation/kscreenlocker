@@ -62,6 +62,9 @@ Conflicts:      plasma-workspace < 5.5.0
 BuildSystem:	cmake
 BuildOption:	-DBUILD_QCH:BOOL=ON
 BuildOption:	-DKDE_INSTALL_USE_QT_SYS_PATHS:BOOL=ON
+# The pam test calls pkg_search_module(pam_wrapper>=1.1.6). Cooker has 1.1.5,
+# and CMake 4.5 rejects that call when PKG_CONFIG_VERSION is empty.
+BuildOption:	-DBUILD_TESTING:BOOL=OFF
 # Renamed 2025-05-01 after 6.0
 %rename plasma6-kscreenlocker
 
