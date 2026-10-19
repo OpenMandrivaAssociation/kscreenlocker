@@ -1,0 +1,258 @@
+diff -ruN a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2026-10-10 12:50:25.000000000 +0200
++++ b/CMakeLists.txt	2026-10-19 21:44:29.043078666 +0200
+@@ -129,6 +129,15 @@
+ set(kscreensaver_dbusXML dbus/org.kde.screensaver.xml)
+ set(powerdevilpolicyagent_xml dbus/kf6_org.kde.Solid.PowerManagement.PolicyAgent.xml)
+ 
++# The emergency window is created in the parent (kwin) after the greeter has
++# exited. Grab from that process, on Qt's X connection, and release on unlock.
++find_package(Qt6GuiPrivate REQUIRED NO_MODULE)
++find_package(XCB REQUIRED COMPONENTS XCB)
++find_package(X11 REQUIRED)
++if(NOT X11_Xi_FOUND)
++    message(FATAL_ERROR "libXi is required so the X11 emergency lock covers XInput2 master devices")
++endif()
++
+ set(ksld_SRCS
+    emergencywindow.cpp
+    globalaccel.cpp
+@@ -136,12 +145,14 @@
+    ksldapp.cpp
+    logind.cpp
+    powermanagement_inhibition.cpp
++   x11parentgrab.cpp
+    emergencywindow.h
+    globalaccel.h
+    interface.h
+    ksldapp.h
+    logind.h
+    powermanagement_inhibition.h
++   x11parentgrab.h
+ )
+ 
+ ecm_qt_declare_logging_category(ksld_SRCS
+@@ -172,6 +183,10 @@
+    KF6::ConfigGui
+    KF6::Package
+    KF6::WindowSystem
++   Qt::GuiPrivate
++   XCB::XCB
++   X11::X11
++   X11::Xi
+ )
+ 
+ set(kscreenlocker_greet_bin_abs ${CMAKE_INSTALL_FULL_LIBEXECDIR}/kscreenlocker_greet)
+diff -ruN a/emergencywindow.cpp b/emergencywindow.cpp
+--- a/emergencywindow.cpp	2026-10-10 12:50:25.000000000 +0200
++++ b/emergencywindow.cpp	2026-10-19 21:34:08.139229240 +0200
+@@ -11,6 +11,7 @@
+ 
+ #include "emergencywindow.h"
+ #include "kscreenlocker_logging.h"
++#include "x11parentgrab.h"
+ 
+ #include <QApplication>
+ #include <QDBusConnection>
+@@ -41,9 +42,18 @@
+         updateGeometry();
+     });
+     connect(qApp, &QGuiApplication::screenRemoved, this, &EmergencyWindow::updateGeometry);
++
++    // The greeter process is gone, and its grab died with it. Hold input in
++    // this process until doUnlock() destroys the window.
++    if (!establishParentX11InputGrab()) {
++        qCCritical(KSCREENLOCKER) << "Emergency window is visible without an X11 input grab";
++    }
+ }
+ 
+-EmergencyWindow::~EmergencyWindow() = default;
++EmergencyWindow::~EmergencyWindow()
++{
++    releaseParentX11InputGrab();
++}
+ 
+ void EmergencyWindow::paintEvent(QPaintEvent *)
+ {
+diff -ruN a/x11parentgrab.cpp b/x11parentgrab.cpp
+--- a/x11parentgrab.cpp	1970-01-01 01:00:00.000000000 +0100
++++ b/x11parentgrab.cpp	2026-10-19 21:34:07.889749107 +0200
+@@ -0,0 +1,161 @@
++/*
++    SPDX-FileCopyrightText: 2011 Martin Gräßlin <mgraesslin@kde.org>
++    SPDX-FileCopyrightText: 2026 OpenMandriva
++
++    SPDX-License-Identifier: GPL-2.0-or-later
++*/
++
++#include "x11parentgrab.h"
++
++#include "kscreenlocker_logging.h"
++
++#include <QGuiApplication>
++#include <QString>
++#include <QThread>
++
++#include <QtGui/private/qtx11extras_p.h>
++
++#include <xcb/xcb.h>
++
++#include <X11/Xlib.h>
++#include <X11/extensions/XInput2.h>
++
++namespace
++{
++bool s_grabbed = false;
++
++constexpr unsigned int grabEventMask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask | EnterWindowMask | LeaveWindowMask;
++
++bool grabXi2MasterDevices(Display *dpy)
++{
++    int opcode = 0;
++    int event = 0;
++    int error = 0;
++    if (!XQueryExtension(dpy, "XInputExtension", &opcode, &event, &error)) {
++        qCWarning(KSCREENLOCKER) << "XInput2 is not available; the emergency lock would not cover all devices";
++        return false;
++    }
++
++    int numMasters = 0;
++    XIDeviceInfo *masters = XIQueryDevice(dpy, XIAllMasterDevices, &numMasters);
++    if (!masters) {
++        return false;
++    }
++
++    bool success = true;
++    for (int i = 0; i < numMasters; ++i) {
++        const char *name = masters[i].name;
++        if (name && (qstrcmp(name, "Virtual core pointer") == 0 || qstrcmp(name, "Virtual core keyboard") == 0)) {
++            continue;
++        }
++        unsigned char maskBits[XIMaskLen(XI_LASTEVENT)] = {};
++        XIEventMask mask;
++        mask.deviceid = masters[i].deviceid;
++        mask.mask = maskBits;
++        mask.mask_len = sizeof(maskBits);
++        XISetMask(maskBits, XI_ButtonPress);
++        XISetMask(maskBits, XI_ButtonRelease);
++        XISetMask(maskBits, XI_Motion);
++        XISetMask(maskBits, XI_Enter);
++        XISetMask(maskBits, XI_Leave);
++        XISetMask(maskBits, XI_KeyPress);
++        XISetMask(maskBits, XI_KeyRelease);
++        const int result = XIGrabDevice(dpy,
++                                         masters[i].deviceid,
++                                         QX11Info::appRootWindow(),
++                                         XCB_TIME_CURRENT_TIME,
++                                         XCB_CURSOR_NONE,
++                                         XIGrabModeAsync,
++                                         XIGrabModeAsync,
++                                         True,
++                                         &mask);
++        if (result != XIGrabSuccess) {
++            success = false;
++            break;
++        }
++    }
++    if (!success) {
++        for (int i = 0; i < numMasters; ++i) {
++            XIUngrabDevice(dpy, masters[i].deviceid, XCB_TIME_CURRENT_TIME);
++        }
++    }
++    XIFreeDeviceInfo(masters);
++    return success;
++}
++
++void ungrabXi2MasterDevices(Display *dpy)
++{
++    int numMasters = 0;
++    XIDeviceInfo *masters = XIQueryDevice(dpy, XIAllMasterDevices, &numMasters);
++    if (!masters) {
++        return;
++    }
++    for (int i = 0; i < numMasters; ++i) {
++        XIUngrabDevice(dpy, masters[i].deviceid, XCB_TIME_CURRENT_TIME);
++    }
++    XIFreeDeviceInfo(masters);
++}
++}
++
++bool establishParentX11InputGrab()
++{
++    if (!qGuiApp || qGuiApp->platformName() != QLatin1String("xcb")) {
++        return true;
++    }
++    if (s_grabbed) {
++        return true;
++    }
++
++    Display *dpy = QX11Info::display();
++    if (!dpy || !QX11Info::connection()) {
++        qCCritical(KSCREENLOCKER) << "X11 connection is missing; the emergency window cannot grab input";
++        return false;
++    }
++
++    for (int attempt = 0; attempt < 30; ++attempt) {
++        XSync(dpy, False);
++        XGrabServer(dpy);
++
++        const bool keyboard = XGrabKeyboard(dpy, QX11Info::appRootWindow(), True, GrabModeAsync, GrabModeAsync, CurrentTime) == GrabSuccess;
++        const bool pointer = keyboard && XGrabPointer(dpy, QX11Info::appRootWindow(), True, grabEventMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime) == GrabSuccess;
++        const bool xi = pointer && grabXi2MasterDevices(dpy);
++        XUngrabServer(dpy);
++        XFlush(dpy);
++
++        if (keyboard && pointer && xi) {
++            s_grabbed = true;
++            qCDebug(KSCREENLOCKER) << "X11 input grab established for the emergency window";
++            return true;
++        }
++
++        if (keyboard) {
++            XUngrabKeyboard(dpy, CurrentTime);
++        }
++        if (pointer) {
++            XUngrabPointer(dpy, CurrentTime);
++        }
++        XFlush(dpy);
++        QThread::msleep(10);
++    }
++
++    qCCritical(KSCREENLOCKER) << "Could not grab the X11 keyboard and pointer for the emergency window";
++    return false;
++}
++
++void releaseParentX11InputGrab()
++{
++    if (!s_grabbed || !qGuiApp || qGuiApp->platformName() != QLatin1String("xcb")) {
++        s_grabbed = false;
++        return;
++    }
++    Display *dpy = QX11Info::display();
++    if (!dpy || !QX11Info::connection()) {
++        s_grabbed = false;
++        return;
++    }
++    ungrabXi2MasterDevices(dpy);
++    XUngrabKeyboard(dpy, CurrentTime);
++    XUngrabPointer(dpy, CurrentTime);
++    XFlush(dpy);
++    s_grabbed = false;
++}
+diff -ruN a/x11parentgrab.h b/x11parentgrab.h
+--- a/x11parentgrab.h	1970-01-01 01:00:00.000000000 +0100
++++ b/x11parentgrab.h	2026-10-19 21:34:07.889749107 +0200
+@@ -0,0 +1,13 @@
++/*
++    SPDX-FileCopyrightText: 2026 OpenMandriva
++
++    SPDX-License-Identifier: GPL-2.0-or-later
++*/
++#pragma once
++
++// Grab the X11 keyboard, pointer and XInput2 master devices from the process
++// that shows the emergency window. The greeter has already exited, so this
++// does not compete with the greeter's grab. Wayland returns true and grabs
++// nothing. A false return leaves the window up; the parent must not exit.
++bool establishParentX11InputGrab();
++void releaseParentX11InputGrab();

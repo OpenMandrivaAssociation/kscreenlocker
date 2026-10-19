@@ -6,7 +6,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	6.8.0
-Release:	%{?git:0.%{git}.}1
+Release:	%{?git:0.%{git}.}2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		https://kde.org/
@@ -18,6 +18,9 @@ Source0:	http://download.kde.org//%{stable}/plasma/%(echo %{version} |cut -d. -f
 # 6.8 dropped the X11 input grab. On X11 the greeter grabs the keyboard,
 # pointer and XInput2 master devices. On Wayland the grab is a no-op.
 Patch0:		kscreenlocker-6.8.0-keep-x11.patch
+# After the greeter gives up, the emergency window lives in the parent.
+# Grab only while that window exists, and do not exit the parent on failure.
+Patch1:		kscreenlocker-6.8.0-emergency-x11-grab.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	cmake(Qt6)
 BuildRequires:	cmake(Qt6Core)
