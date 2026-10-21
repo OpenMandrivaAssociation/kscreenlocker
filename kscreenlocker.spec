@@ -6,7 +6,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	6.8.1
-Release:	%{?git:0.%{git}.}1
+Release:	%{?git:0.%{git}.}2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		https://kde.org/
@@ -21,6 +21,9 @@ Patch0:		kscreenlocker-6.8.0-keep-x11.patch
 # After the greeter gives up, the emergency window lives in the parent.
 # Grab only while that window exists, and do not exit the parent on failure.
 Patch1:		kscreenlocker-6.8.0-emergency-x11-grab.patch
+# Override-redirect the greeter and set _KDE_SCREEN_LOCKER so kwin_x11
+# stacks it above the dock. Wayland still uses the layer-shell window.
+Patch2:		kscreenlocker-6.8.1-x11-greeter-stack.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	cmake(Qt6)
 BuildRequires:	cmake(Qt6Core)

@@ -1,0 +1,55 @@
+diff -ruN a/greeter/greeterapp.cpp b/greeter/greeterapp.cpp
+--- a/greeter/greeterapp.cpp	2026-10-21 23:37:03.085519782 +0200
++++ b/greeter/greeterapp.cpp	2026-10-21 23:37:03.090399565 +0200
+@@ -31,6 +31,10 @@
+ #include <KScreenDpms/Dpms>
+ #include <KWindowSystem>
+ 
++#include <X11/Xatom.h>
++#include <X11/Xlib.h>
++#include <fixx11h.h>
++
+ #include <KUser>
+ // Plasma
+ #include <KPackage/Package>
+@@ -318,7 +322,13 @@
+     view->engine()->setNetworkAccessManagerFactory(new NoAccessNetworkAccessManagerFactory);
+ 
+     if (!m_testing) {
+-        view->setFlags(Qt::FramelessWindowHint);
++        if (KWindowSystem::isPlatformX11()) {
++            // Override-redirect so the dock cannot paint over the lock.
++            // Wayland stays frameless and uses the layer shell below.
++            view->setFlags(Qt::X11BypassWindowManagerHint);
++        } else {
++            view->setFlags(Qt::FramelessWindowHint);
++        }
+     }
+ 
+     // engine stuff
+@@ -545,6 +555,25 @@
+ 
+ bool UnlockApp::eventFilter(QObject *obj, QEvent *event)
+ {
++    if (obj != this && event->type() == QEvent::Show && KWindowSystem::isPlatformX11()) {
++        if (auto *view = qobject_cast<QQuickView *>(obj); view && m_views.contains(view) && view->winId()) {
++            // kwin_x11 stacks a window with this atom above the panel.
++            auto *x11App = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
++            if (x11App && x11App->display()) {
++                static Atom tag = XInternAtom(x11App->display(), "_KDE_SCREEN_LOCKER", False);
++                XChangeProperty(x11App->display(), view->winId(), tag, tag, 32, PropModeReplace, nullptr, 0);
++            }
++        }
++        return false;
++    }
++
++    if (event->type() == QEvent::MouseButtonPress && KWindowSystem::isPlatformX11()) {
++        if (getActiveScreen()) {
++            getActiveScreen()->requestActivate();
++        }
++        return false;
++    }
++
+     if (event->type() == QEvent::Enter) {
+         if (m_views.contains(obj)) {
+             Q_EMIT viewEntered(qobject_cast<QQuickView *>(obj));
