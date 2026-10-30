@@ -6,7 +6,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	6.8.2
-Release:	%{?git:0.%{git}.}1
+Release:	%{?git:0.%{git}.}2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		https://kde.org/
@@ -24,6 +24,12 @@ Patch1:		kscreenlocker-6.8.0-emergency-x11-grab.patch
 # Override-redirect the greeter and set _KDE_SCREEN_LOCKER so kwin_x11
 # stacks it above the dock. Wayland still uses the layer-shell window.
 Patch2:		kscreenlocker-6.8.1-x11-greeter-stack.patch
+# The root grab delivers KeyPress to the root window, and Qt drops those.
+# Forward them to the greeter and send FocusIn, as Plasma 6.7 did. Do not
+# request XI2 key events; that grab fails on pointer masters and aborts the
+# lock. Retry PAM authentication when the worker becomes ready, keep a
+# password typed before the prompt, and alias pamTimeout for the lock screen.
+Patch3:		kscreenlocker-6.8.2-x11-unlock.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	cmake(Qt6)
 BuildRequires:	cmake(Qt6Core)

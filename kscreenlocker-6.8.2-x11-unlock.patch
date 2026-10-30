@@ -1,0 +1,532 @@
+diff -Naur kscreenlocker-6.8.2/greeter/greeterapp.cpp kscreenlocker-6.8.2.new/greeter/greeterapp.cpp
+--- kscreenlocker-6.8.2/greeter/greeterapp.cpp	2026-10-30 18:32:35.319961247 +0100
++++ kscreenlocker-6.8.2.new/greeter/greeterapp.cpp	2026-10-30 18:35:11.676131649 +0100
+@@ -434,6 +434,13 @@
+     view->show();
+     view->raise();
+ 
++    if (!m_testing && KWindowSystem::isPlatformX11() && view->winId()) {
++        registerX11GreeterWindow(view->winId());
++        connect(view, &QObject::destroyed, this, [window = view->winId()] {
++            unregisterX11GreeterWindow(window);
++        });
++    }
++
+     auto onFrameSwapped = [this, view] {
+         markViewsAsVisible(view->rootObject());
+     };
+@@ -484,6 +491,9 @@
+     if (!m_testing) {
+         activeScreen->setKeyboardGrabEnabled(true);
+         activeScreen->setMouseGrabEnabled(true);
++        if (KWindowSystem::isPlatformX11()) {
++            focusX11GreeterWindow(activeScreen->winId());
++        }
+     }
+     activeScreen->requestActivate();
+ }
+diff -Naur kscreenlocker-6.8.2/greeter/pamauthenticator.cpp kscreenlocker-6.8.2.new/greeter/pamauthenticator.cpp
+--- kscreenlocker-6.8.2/greeter/pamauthenticator.cpp	2026-10-27 12:26:46.000000000 +0100
++++ kscreenlocker-6.8.2.new/greeter/pamauthenticator.cpp	2026-10-30 18:36:32.985850006 +0100
+@@ -14,6 +14,8 @@
+ #include <QProcess>
+ #include <QTimer>
+ 
++#include <utility>
++
+ #include <KLibexec>
+ 
+ #include "kscreenlocker_greet_logging.h"
+@@ -81,21 +83,22 @@
+         return;
+     }
+ 
+-    if (!m_ready) {
+-        qCWarning(KSCREENLOCKER_GREET) << "Worker not ready yet, cannot authenticate.";
+-        return;
+-    }
+-
+-    if (!m_dbusWorker) {
+-        qCWarning(KSCREENLOCKER_GREET) << "DBus worker not initialized, cannot authenticate yet.";
++    // The worker pings a moment after it is spawned. startAuthenticating() runs
++    // before that ping, and dropping the call left the greeter idle until some
++    // later retry. Remember it and run it from Ping().
++    if (!m_ready || !m_dbusWorker) {
++        m_unlockPending = true;
++        qCDebug(KSCREENLOCKER_GREET) << "Worker not ready yet, authentication will start when it is";
+         return;
+     }
+ 
+     if (m_unavailable) {
++        m_unlockPending = false;
+         qCDebug(KSCREENLOCKER_GREET) << "PAM service is not available. Cannot authenticate.";
+         return;
+     }
+ 
++    m_unlockPending = false;
+     setBusy(true);
+     auto watcher = new QDBusPendingCallWatcher(m_dbusWorker->Authenticate(), this);
+     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, watcher]() {
+@@ -104,6 +107,7 @@
+ 
+         if (watcher->error().isValid()) {
+             qCWarning(KSCREENLOCKER_GREET) << "PAM worker failed to authenticate:" << watcher->error().message();
++            m_queuedResponse.clear();
+             Q_EMIT failed();
+             return;
+         }
+@@ -127,14 +131,17 @@
+             }
+             m_lastFailed = now;
+ 
++            m_queuedResponse.clear();
+             Q_EMIT failed();
+             return;
+         }
+         case WorkerResult::Type::Success:
++            m_queuedResponse.clear();
+             m_unlocked = true;
+             Q_EMIT succeeded();
+             return;
+         case WorkerResult::Type::Unavailable:
++            m_queuedResponse.clear();
+             m_unavailable = true;
+             Q_EMIT availableChanged();
+             return;
+@@ -150,13 +157,19 @@
+         QDBusMessage reply = m_pendingPrompt.createReply(QString::fromUtf8(response));
+         m_dbusWorker->connection().send(reply);
+         m_pendingPrompt = {};
++        m_queuedResponse.clear();
+     } else {
+-        qCWarning(KSCREENLOCKER_GREET) << "Received prompt response, but no pending prompt was found!";
++        // The password field is usable before PAM asks. Keep the response and
++        // deliver it from promptInternal() instead of dropping it.
++        m_queuedResponse = response;
++        qCDebug(KSCREENLOCKER_GREET) << "PAM prompt is not ready, keeping the response until it is";
+     }
+ }
+ 
+ void PamAuthenticator::cancel()
+ {
++    m_unlockPending = false;
++    m_queuedResponse.clear();
+     m_prompt.clear();
+     m_promptForSecret.clear();
+     m_infoMessage.clear();
+@@ -222,6 +235,9 @@
+     Q_ASSERT(!m_ready); // only one ping ever. thank you!
+     m_ready = true;
+     Q_EMIT readyChanged();
++    if (m_unlockPending) {
++        tryUnlock();
++    }
+ }
+ 
+ QString PamAuthenticator::Prompt(const QString &msg)
+@@ -276,6 +292,12 @@
+     setDelayedReply(true);
+     m_pendingPrompt = message();
+ 
++    if (isSecret && !m_queuedResponse.isNull()) {
++        const QByteArray response = std::move(m_queuedResponse);
++        m_queuedResponse = {};
++        respond(response);
++    }
++
+     return {};
+ }
+ 
+diff -Naur kscreenlocker-6.8.2/greeter/pamauthenticator.h kscreenlocker-6.8.2.new/greeter/pamauthenticator.h
+--- kscreenlocker-6.8.2/greeter/pamauthenticator.h	2026-10-27 12:26:46.000000000 +0100
++++ kscreenlocker-6.8.2.new/greeter/pamauthenticator.h	2026-10-30 18:35:30.327545645 +0100
+@@ -131,10 +131,12 @@
+     QString m_infoMessage;
+     QString m_service;
+     bool m_ready = false;
++    bool m_unlockPending = false;
+     bool m_busy = false;
+     bool m_unlocked = false;
+     bool m_unavailable = false;
+     bool m_inPasswordDelay = false;
++    QByteArray m_queuedResponse;
+     uint m_failedCount = 0;
+     QDateTime m_lastFailed = QDateTime::currentDateTimeUtc();
+     NoninteractiveAuthenticatorTypes m_authenticatorType;
+diff -Naur kscreenlocker-6.8.2/greeter/pamauthenticatordescriptor.h kscreenlocker-6.8.2.new/greeter/pamauthenticatordescriptor.h
+--- kscreenlocker-6.8.2/greeter/pamauthenticatordescriptor.h	2026-10-27 12:26:46.000000000 +0100
++++ kscreenlocker-6.8.2.new/greeter/pamauthenticatordescriptor.h	2026-10-30 18:35:30.405185552 +0100
+@@ -10,16 +10,16 @@
+     Q_OBJECT
+ 
+     //! Whether this authenticator may be used at all; enabled by distro + enabled by user
+-    Q_PROPERTY(bool enabled MEMBER m_enabled CONSTANT)
++    Q_PROPERTY(bool enabled MEMBER m_enabled NOTIFY staticDataChanged)
+ 
+     //! The type of this authenticator (Regular, Fingerprint, ...)
+-    Q_PROPERTY(PamAuthenticators::Authenticator type MEMBER m_type CONSTANT)
++    Q_PROPERTY(PamAuthenticators::Authenticator type MEMBER m_type NOTIFY staticDataChanged)
+ 
+     //! The name of the icon to present for this authenticator in the UI
+-    Q_PROPERTY(QString iconName MEMBER m_iconName CONSTANT)
++    Q_PROPERTY(QString iconName MEMBER m_iconName NOTIFY staticDataChanged)
+ 
+     //! Whether this authenticator requires a password field to be shown in the UI
+-    Q_PROPERTY(bool passwordField MEMBER m_passwordField CONSTANT)
++    Q_PROPERTY(bool passwordField MEMBER m_passwordField NOTIFY staticDataChanged)
+ 
+     /*!
+         Whether this authenticator is expected to signal a prompt before being considered working.
+@@ -29,10 +29,10 @@
+         e.g. consider pam-u2f. It has a 'cue' option that may not be set, which means there will be no prompt but
+         the authenticator will still be working
+     */
+-    Q_PROPERTY(bool expectingPrompt MEMBER m_expectingPrompt CONSTANT)
++    Q_PROPERTY(bool expectingPrompt MEMBER m_expectingPrompt NOTIFY staticDataChanged)
+ 
+     //! The tooltip to show for the authenticator in the UI
+-    Q_PROPERTY(QString tooltip MEMBER m_tooltip CONSTANT)
++    Q_PROPERTY(QString tooltip MEMBER m_tooltip NOTIFY staticDataChanged)
+ 
+     /*!
+         Whether the prompt should be shown to the user.
+@@ -42,7 +42,7 @@
+         their PAM stack requires more involved prompt strategies (such as multi-factor authentication where the password
+         input would expect different types of inputs depending on which PAM module is currently prompting).
+     */
+-    Q_PROPERTY(bool showPrompt MEMBER m_showPrompt CONSTANT)
++    Q_PROPERTY(bool showPrompt MEMBER m_showPrompt NOTIFY staticDataChanged)
+ 
+     /*!
+         Whether this authenticator is currently functional.
+@@ -68,6 +68,9 @@
+ 
+ Q_SIGNALS:
+     void functionalChanged();
++    // Present so Qt does not warn that the role properties have no notify signal.
++    // The values do not change after the descriptor is created.
++    void staticDataChanged();
+ 
+ private:
+     // Mind that we must be default-constructible for QRangeModel to work. Always initialize members!
+diff -Naur kscreenlocker-6.8.2/greeter/pamauthenticators.cpp kscreenlocker-6.8.2.new/greeter/pamauthenticators.cpp
+--- kscreenlocker-6.8.2/greeter/pamauthenticators.cpp	2026-10-27 12:26:46.000000000 +0100
++++ kscreenlocker-6.8.2.new/greeter/pamauthenticators.cpp	2026-10-30 18:35:51.823303738 +0100
+@@ -249,6 +249,10 @@
+         qCDebug(KSCREENLOCKER_GREET) << "PamAuthenticators: Error message from interactive authenticator" << qUtf8Printable(authenticator->service());
+         Q_EMIT errorMessageChanged();
+     });
++    connect(authenticator, &PamAuthenticator::inPasswordDelayChanged, this, [this] {
++        Q_EMIT inPasswordDelayChanged();
++        Q_EMIT pamTimeoutChanged();
++    });
+ 
+     d->graceLocked = false;
+     // graceLock has no signal
+diff -Naur kscreenlocker-6.8.2/greeter/pamauthenticators.h kscreenlocker-6.8.2.new/greeter/pamauthenticators.h
+--- kscreenlocker-6.8.2/greeter/pamauthenticators.h	2026-10-27 12:26:46.000000000 +0100
++++ kscreenlocker-6.8.2.new/greeter/pamauthenticators.h	2026-10-30 18:35:30.328670838 +0100
+@@ -22,6 +22,10 @@
+     // these properties delegate to the interactive authenticator
+     Q_PROPERTY(bool busy READ isBusy NOTIFY busyChanged)
+     Q_PROPERTY(bool inPasswordDelay READ inPasswordDelay NOTIFY inPasswordDelayChanged)
++    // plasma-desktop 6.8 still binds pamTimeout / onPamTimeoutChanged. The
++    // authenticator was renamed to inPasswordDelay without this alias, so the
++    // lock screen dropped the "wait and retry" path and warned on every start.
++    Q_PROPERTY(bool pamTimeout READ inPasswordDelay NOTIFY pamTimeoutChanged)
+ 
+     Q_PROPERTY(QString prompt READ prompt NOTIFY promptChanged)
+     Q_PROPERTY(QString promptForSecret READ promptForSecret NOTIFY promptForSecretChanged)
+@@ -75,6 +79,7 @@
+     Q_SIGNAL void busyChanged();
+     bool inPasswordDelay() const;
+     Q_SIGNAL void inPasswordDelayChanged();
++    Q_SIGNAL void pamTimeoutChanged();
+ 
+     QString prompt() const;
+     Q_SIGNAL void promptChanged();
+diff -Naur kscreenlocker-6.8.2/greeter/x11grab.cpp kscreenlocker-6.8.2.new/greeter/x11grab.cpp
+--- kscreenlocker-6.8.2/greeter/x11grab.cpp	2026-10-30 18:32:35.316187508 +0100
++++ kscreenlocker-6.8.2.new/greeter/x11grab.cpp	2026-10-30 18:37:35.132413644 +0100
+@@ -9,9 +9,15 @@
+ 
+ #include "kscreenlocker_greet_logging.h"
+ 
++#include <QAbstractNativeEventFilter>
++#include <QGuiApplication>
++#include <QList>
+ #include <QString>
+ #include <QThread>
+ 
++#include <cstring>
++#include <utility>
++
+ #include <QtGui/private/qtx11extras_p.h>
+ 
+ #include <xcb/xcb.h>
+@@ -52,13 +58,14 @@
+         mask.deviceid = masters[i].deviceid;
+         mask.mask = maskBits;
+         mask.mask_len = sizeof(maskBits);
++        // Match the Plasma 6.7 grab: pointer events only. Qt delivers keys as
++        // core KeyPress events, and a key mask on a pointer master makes
++        // XIGrabDevice fail, which would abort the whole lock.
+         XISetMask(maskBits, XI_ButtonPress);
+         XISetMask(maskBits, XI_ButtonRelease);
+         XISetMask(maskBits, XI_Motion);
+         XISetMask(maskBits, XI_Enter);
+         XISetMask(maskBits, XI_Leave);
+-        XISetMask(maskBits, XI_KeyPress);
+-        XISetMask(maskBits, XI_KeyRelease);
+         const int result = XIGrabDevice(dpy,
+                                          masters[i].deviceid,
+                                          QX11Info::appRootWindow(),
+@@ -95,6 +102,136 @@
+     XIFreeDeviceInfo(masters);
+ }
+ #endif
++
++QList<WId> s_windows;
++WId s_focused = 0;
++bool s_focusDelivered = false;
++
++class X11GrabEventFilter : public QAbstractNativeEventFilter
++{
++public:
++    bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *) override;
++};
++
++X11GrabEventFilter *s_filter = nullptr;
++
++WId windowAt(int rootX, int rootY)
++{
++    Display *dpy = QX11Info::display();
++    if (!dpy) {
++        return 0;
++    }
++    for (WId window : std::as_const(s_windows)) {
++        Window root = 0;
++        int x = 0;
++        int y = 0;
++        unsigned int width = 0;
++        unsigned int height = 0;
++        unsigned int border = 0;
++        unsigned int depth = 0;
++        if (!XGetGeometry(dpy, window, &root, &x, &y, &width, &height, &border, &depth)) {
++            continue;
++        }
++        if (rootX >= x && rootX < x + int(width) && rootY >= y && rootY < y + int(height)) {
++            return window;
++        }
++    }
++    return 0;
++}
++
++void sendKeyToWindow(xcb_key_press_event_t *event, WId target, int rootX, int rootY)
++{
++    xcb_connection_t *connection = QX11Info::connection();
++    Display *dpy = QX11Info::display();
++    if (!connection || !dpy || !target) {
++        return;
++    }
++
++    int localX = 0;
++    int localY = 0;
++    Window root = 0;
++    int x = 0;
++    int y = 0;
++    unsigned int width = 0;
++    unsigned int height = 0;
++    unsigned int border = 0;
++    unsigned int depth = 0;
++    if (XGetGeometry(dpy, target, &root, &x, &y, &width, &height, &border, &depth)) {
++        localX = rootX - x;
++        localY = rootY - y;
++    }
++
++    xcb_key_press_event_t forwarded = *event;
++    forwarded.response_type = event->response_type & ~0x80;
++    forwarded.event = target;
++    forwarded.child = XCB_WINDOW_NONE;
++    forwarded.event_x = localX;
++    forwarded.event_y = localY;
++    xcb_send_event(connection, 0, target, XCB_EVENT_MASK_NO_EVENT, reinterpret_cast<const char *>(&forwarded));
++    xcb_flush(connection);
++}
++
++bool X11GrabEventFilter::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *)
++{
++    if (!s_grabbed || eventType != QByteArrayLiteral("xcb_generic_event_t")) {
++        return false;
++    }
++
++    auto *event = static_cast<xcb_generic_event_t *>(message);
++    // Events forwarded below come back with the SendEvent bit. Qt has to see those.
++    if (event->response_type & 0x80) {
++        return false;
++    }
++
++    const uint8_t type = event->response_type & 0x7f;
++    if (type != XCB_KEY_PRESS && type != XCB_KEY_RELEASE) {
++        return false;
++    }
++
++    auto *key = reinterpret_cast<xcb_key_press_event_t *>(event);
++    // Qt handles a core key only when the event window is one of its views.
++    // A root grab delivers keys for the root window instead.
++    if (key->event != QX11Info::appRootWindow()) {
++        return false;
++    }
++
++    WId target = windowAt(key->root_x, key->root_y);
++    if (!target) {
++        target = s_focused;
++    }
++    if (!target && !s_windows.isEmpty()) {
++        target = s_windows.constFirst();
++    }
++    if (!target) {
++        return false;
++    }
++
++    // A focus-in has to land before the key, or the password field drops it.
++    focusX11GreeterWindow(target);
++    sendKeyToWindow(key, target, key->root_x, key->root_y);
++    return true;
++}
++
++void installGrabEventFilter()
++{
++    if (s_filter || !qApp) {
++        return;
++    }
++    s_filter = new X11GrabEventFilter;
++    qApp->installNativeEventFilter(s_filter);
++}
++
++void removeGrabEventFilter()
++{
++    if (!s_filter) {
++        return;
++    }
++    if (qApp) {
++        qApp->removeNativeEventFilter(s_filter);
++    }
++    delete s_filter;
++    s_filter = nullptr;
++}
+ }
+ 
+ bool establishX11InputGrab()
+@@ -133,6 +270,7 @@
+ 
+         if (keyboard && pointer && xi) {
+             s_grabbed = true;
++            installGrabEventFilter();
+             qCDebug(KSCREENLOCKER_GREET) << "X11 input grab established";
+             return true;
+         }
+@@ -170,4 +308,60 @@
+     XUngrabPointer(dpy, CurrentTime);
+     XFlush(dpy);
+     s_grabbed = false;
++    s_focusDelivered = false;
++    removeGrabEventFilter();
++}
++
++void registerX11GreeterWindow(WId window)
++{
++    if (!window || s_windows.contains(window)) {
++        return;
++    }
++    const bool first = s_windows.isEmpty();
++    s_windows.prepend(window);
++    if (first) {
++        focusX11GreeterWindow(window);
++    }
++}
++
++void unregisterX11GreeterWindow(WId window)
++{
++    s_windows.removeAll(window);
++    if (s_focused == window) {
++        s_focused = s_windows.isEmpty() ? 0 : s_windows.constFirst();
++        s_focusDelivered = false;
++    }
++}
++
++void focusX11GreeterWindow(WId window)
++{
++    if (!window || !s_windows.contains(window)) {
++        return;
++    }
++    if (window == s_focused && s_focusDelivered) {
++        return;
++    }
++    s_focused = window;
++    s_focusDelivered = false;
++    if (!s_grabbed || !QX11Info::isPlatformX11()) {
++        return;
++    }
++
++    Display *dpy = QX11Info::display();
++    if (!dpy) {
++        return;
++    }
++
++    // The root grab means this window does not become the X focus on its own.
++    // Qt will not put the cursor in the password field without a focus-in.
++    XEvent ev;
++    memset(&ev, 0, sizeof(ev));
++    ev.xfocus.display = dpy;
++    ev.xfocus.type = FocusIn;
++    ev.xfocus.window = window;
++    ev.xfocus.mode = NotifyNormal;
++    ev.xfocus.detail = NotifyAncestor;
++    XSendEvent(dpy, window, False, NoEventMask, &ev);
++    XFlush(dpy);
++    s_focusDelivered = true;
+ }
+diff -Naur kscreenlocker-6.8.2/greeter/x11grab.h kscreenlocker-6.8.2.new/greeter/x11grab.h
+--- kscreenlocker-6.8.2/greeter/x11grab.h	2026-10-30 18:32:35.316286059 +0100
++++ kscreenlocker-6.8.2.new/greeter/x11grab.h	2026-10-30 18:34:16.683303605 +0100
+@@ -5,9 +5,20 @@
+ */
+ #pragma once
+ 
++#include <QtGui/qwindowdefs.h>
++
+ // On X11, grab the keyboard, pointer, and XInput2 master devices so other
+ // clients cannot see or inject input while the greeter is up.
+ // Wayland sessions return true and grab nothing; KWin already confines input.
+ // A false return means the X11 lock would be insecure and the greeter must exit.
+ bool establishX11InputGrab();
+ void releaseX11InputGrab();
++
++// The grab is taken on the root window, before the greeter views exist.
++// Core key events then arrive for the root, and Qt only delivers a key to a
++// view whose id is the event window. Register each greeter view so those
++// events can be forwarded, and so the view gets a focus-in. Plasma 6.7 did
++// this in the parent process; that forwarder was removed in 6.8.
++void registerX11GreeterWindow(WId window);
++void unregisterX11GreeterWindow(WId window);
++void focusX11GreeterWindow(WId window);
+diff -Naur kscreenlocker-6.8.2/x11parentgrab.cpp kscreenlocker-6.8.2.new/x11parentgrab.cpp
+--- kscreenlocker-6.8.2/x11parentgrab.cpp	2026-10-30 18:32:35.318162359 +0100
++++ kscreenlocker-6.8.2.new/x11parentgrab.cpp	2026-10-30 18:34:16.683766840 +0100
+@@ -53,13 +53,13 @@
+         mask.deviceid = masters[i].deviceid;
+         mask.mask = maskBits;
+         mask.mask_len = sizeof(maskBits);
++        // Same mask as the Plasma 6.7 locker. Key events stay on the core
++        // keyboard grab; requesting them here fails on pointer masters.
+         XISetMask(maskBits, XI_ButtonPress);
+         XISetMask(maskBits, XI_ButtonRelease);
+         XISetMask(maskBits, XI_Motion);
+         XISetMask(maskBits, XI_Enter);
+         XISetMask(maskBits, XI_Leave);
+-        XISetMask(maskBits, XI_KeyPress);
+-        XISetMask(maskBits, XI_KeyRelease);
+         const int result = XIGrabDevice(dpy,
+                                          masters[i].deviceid,
+                                          QX11Info::appRootWindow(),
