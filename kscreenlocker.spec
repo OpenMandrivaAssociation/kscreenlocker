@@ -6,7 +6,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	6.8.2
-Release:	%{?git:0.%{git}.}2
+Release:	%{?git:0.%{git}.}3
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		https://kde.org/
@@ -38,6 +38,8 @@ BuildRequires:	cmake(Qt6Gui)
 BuildRequires:	cmake(Qt6Widgets)
 BuildRequires:	cmake(Qt6Quick)
 BuildRequires:	cmake(Qt6QuickWidgets)
+# Qt Qml no longer pulls this in. Without it, rpm emits no qml() dependencies.
+BuildRequires:	rpm-provreq-qml
 BuildRequires:	cmake(Qt6Test)
 BuildRequires:	pkgconfig(x11)
 BuildRequires:	pkgconfig(xcursor)
