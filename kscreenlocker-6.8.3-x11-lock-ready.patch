@@ -1,0 +1,136 @@
+diff -Naur kscreenlocker-6.8.3/ksldapp.cpp kscreenlocker-6.8.3.new/ksldapp.cpp
+--- kscreenlocker-6.8.3/ksldapp.cpp	2026-11-11 18:46:15.807957185 +0100
++++ kscreenlocker-6.8.3.new/ksldapp.cpp	2026-11-11 18:46:15.809490066 +0100
+@@ -100,6 +100,16 @@
+ static bool s_graceTimeKill = false;
+ static bool s_logindExit = false;
+ static bool s_lockProcessRequestedExit = false;
++// Set while an X11 greeter is starting and has not yet grabbed the pointer.
++// Not a member: KSldApp is exported, and a new field would break the ABI.
++static bool s_waitingForX11Grab = false;
++
++static bool waitForX11Grab()
++{
++    // Wayland kwin treats only LockState::Locked as "the session is locked" and
++    // must see that immediately. DISPLAY is also set there because of Xwayland.
++    return qgetenv("XDG_SESSION_TYPE") != "wayland" && !qgetenv("DISPLAY").isNull();
++}
+ 
+ void KSldApp::initialize()
+ {
+@@ -160,9 +170,14 @@
+     m_lockProcess->setReadChannel(QProcess::StandardOutput);
+     auto finishedSignal = static_cast<void (QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished);
+     connect(m_lockProcess, &QProcess::readyRead, this, [this] {
+-        const auto str = QString::fromLocal8Bit(m_lockProcess->readLine());
+-        if (str == QStringLiteral("Unlocked\n")) {
+-            lockProcessRequestedUnlock();
++        while (m_lockProcess->canReadLine()) {
++            const auto str = QString::fromLocal8Bit(m_lockProcess->readLine());
++            if (str == QStringLiteral("Unlocked\n")) {
++                lockProcessRequestedUnlock();
++            } else if (str.startsWith(QLatin1String("Locked at "))) {
++                // Printed after the X11 grab (or immediately on Wayland, where the grab is a no-op).
++                markLocked();
++            }
+         }
+     });
+     connect(m_lockProcess, finishedSignal, this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+@@ -207,6 +222,8 @@
+         } else if (!m_emergencyLockWindow) {
+             qCWarning(KSCREENLOCKER) << "Everything else failed. Need to put Greeter in emergency mode.";
+             m_emergencyLockWindow = std::make_unique<EmergencyWindow>();
++            // The emergency window is the lock. Do not leave switch-user waiting for a greeter line.
++            markLocked();
+         }
+     });
+     connect(m_lockProcess, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
+@@ -319,11 +336,12 @@
+ {
+     qCDebug(KSCREENLOCKER) << "lock called with establishLock:" << establishLockToString(establishLock);
+ 
+-    if (lockState() != Unlocked) {
++    if (lockState() != Unlocked || s_waitingForX11Grab) {
+         // already locked or acquiring lock, no need to lock again
+         // but make sure it's really locked
+         endGraceTime();
+-        if (establishLock == EstablishLock::Immediate) {
++        // processId() is 0 until the greeter has a pid. kill(0, SIGUSR1) signals the whole group.
++        if (establishLock == EstablishLock::Immediate && m_lockProcess && m_lockProcess->processId() > 0) {
+             // signal the greeter to switch to immediateLock mode
+             kill(m_lockProcess->processId(), SIGUSR1);
+         }
+@@ -335,11 +353,18 @@
+     KNotification::event(QStringLiteral("locked"), i18n("Screen locked"), QPixmap(), KNotification::CloseOnTimeout, QStringLiteral("ksmserver"));
+ 
+     s_lockProcessRequestedExit = false;
++    setForceSoftwareRendering(false);
++
++    // On X11, SwitchToGreeter and sleep both need the grab to be held first.
++    // Wayland keeps the old order: Locked before aboutToStartGreeter, locked() immediately after.
++    if (waitForX11Grab()) {
++        s_waitingForX11Grab = true;
++        startLockProcess(establishLock);
++        return;
++    }
+ 
+     m_lockState = Locked;
+     m_lockedTimer.restart();
+-
+-    setForceSoftwareRendering(false);
+     // start unlock screen process
+     startLockProcess(establishLock);
+ 
+@@ -352,8 +377,35 @@
+     }
+ }
+ 
++void KSldApp::markLocked()
++{
++    if (m_lockState == Locked) {
++        s_waitingForX11Grab = false;
++        return;
++    }
++    s_waitingForX11Grab = false;
++    m_lockState = Locked;
++    m_lockedTimer.restart();
++    Q_EMIT lockStateChanged();
++    Q_EMIT locked();
++    m_globalAccel->prepare();
++    m_logind->setLocked(true);
++    if (m_lockGrace > 0 && m_inGraceTime) {
++        m_graceTimer->start(m_lockGrace);
++    }
++}
++
+ void KSldApp::doUnlock()
+ {
++    s_waitingForX11Grab = false;
++    if (m_lockState != Locked) {
++        // Greeter failed before the grab. Nothing was announced as locked.
++        m_emergencyLockWindow.reset();
++        m_greeterCrashedCounter = 0;
++        endGraceTime();
++        return;
++    }
++
+     qCDebug(KSCREENLOCKER) << "Unlocking now.";
+     m_emergencyLockWindow.reset();
+     m_lockState = Unlocked;
+diff -Naur kscreenlocker-6.8.3/ksldapp.h kscreenlocker-6.8.3.new/ksldapp.h
+--- kscreenlocker-6.8.3/ksldapp.h	2026-11-11 18:46:15.807982155 +0100
++++ kscreenlocker-6.8.3.new/ksldapp.h	2026-11-11 18:46:15.809514147 +0100
+@@ -273,6 +273,13 @@
+ 
+ private:
+     /**
++     * @brief Announce that the lock is held.
++     *
++     * On Wayland this happens immediately. On X11 it happens once the greeter has grabbed input.
++     */
++    void markLocked();
++
++    /**
+      * @brief Starts the lock process.
+      *
+      * This function starts the lock process based on the given EstablishLock parameter.

@@ -6,7 +6,7 @@
 Summary:	Library and components for secure lock screen architecture
 Name:		kscreenlocker
 Version:	6.8.3
-Release:	%{?git:0.%{git}.}1
+Release:	%{?git:0.%{git}.}2
 License:	GPLv2+
 Group:		Graphical desktop/KDE
 URL:		https://kde.org/
@@ -30,6 +30,10 @@ Patch2:		kscreenlocker-6.8.1-x11-greeter-stack.patch
 # lock. Retry PAM authentication when the worker becomes ready, keep a
 # password typed before the prompt, and alias pamTimeout for the lock screen.
 Patch3:		kscreenlocker-6.8.2-x11-unlock.patch
+# On X11, org.freedesktop.ScreenSaver.Lock returns before the greeter has
+# grabbed input. Announce the lock only after "Locked at " (or the emergency
+# window), so a user switch cannot change VT first. Wayland still locks immediately.
+Patch4:		kscreenlocker-6.8.3-x11-lock-ready.patch
 BuildRequires:	cmake(ECM)
 BuildRequires:	cmake(Qt6)
 BuildRequires:	cmake(Qt6Core)
